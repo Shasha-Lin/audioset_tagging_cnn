@@ -7,10 +7,10 @@ import librosa
 import matplotlib.pyplot as plt
 import torch
 
-from utilities import create_folder, get_filename
-from models import *
-from pytorch_utils import move_data_to_device
-import config
+from utils.utilities import create_folder, get_filename
+from pytorch.models import *
+from pytorch.pytorch_utils import move_data_to_device
+from utils import config
 
 
 def audio_tagging(args):
@@ -33,7 +33,7 @@ def audio_tagging(args):
     labels = config.labels
 
     # Model
-    Model = eval(model_type)
+    Model = Wavegram_Logmel_Cnn14
     model = Model(sample_rate=sample_rate, window_size=window_size, 
         hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
         classes_num=classes_num)
@@ -128,9 +128,9 @@ def sound_event_detection(args):
         model.eval()
         batch_output_dict = model(waveform, None)
 
-    framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
+    # framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
     """(time_steps, classes_num)"""
-
+    framewise_output = batch_output_dict['clipwise_output'].data.cpu().numpy()
     print('Sound event detection result (time_steps x classes_num): {}'.format(
         framewise_output.shape))
 

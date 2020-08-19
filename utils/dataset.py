@@ -9,9 +9,9 @@ import logging
 import h5py
 import librosa
 
-from utilities import (create_folder, get_filename, create_logging, 
+from utils.utilities import (create_folder, get_filename, create_logging,
     float32_to_int16, pad_or_truncate, read_metadata)
-import config
+from utils import config
 
 
 def split_unbalanced_csv_to_partial_csvs(args):

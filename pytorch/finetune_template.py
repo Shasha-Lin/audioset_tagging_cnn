@@ -17,9 +17,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
  
-from utilities import get_filename
-from models import *
-import config
+from utils.utilities import get_filename
+from pytorch.models import *
+from utils import config
+import librosa
+import soundfile
 
 
 class Transfer_Cnn14(nn.Module):
@@ -56,7 +58,7 @@ class Transfer_Cnn14(nn.Module):
         output_dict = self.base(input, mixup_lambda)
         embedding = output_dict['embedding']
 
-        clipwise_output =  torch.log_softmax(self.fc_transfer(embedding), dim=-1)
+        clipwise_output = torch.log_softmax(self.fc_transfer(embedding), dim=-1)
         output_dict['clipwise_output'] = clipwise_output
  
         return output_dict

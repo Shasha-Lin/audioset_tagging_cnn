@@ -12,21 +12,21 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
  
-from utilities import (create_folder, get_filename, create_logging, Mixup, 
+from utils.utilities import (create_folder, get_filename, create_logging, Mixup,
     StatisticsContainer)
-from models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout, 
+from .models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout,
     Cnn6, Cnn10, ResNet22, ResNet38, ResNet54, Cnn14_emb512, Cnn14_emb128, 
     Cnn14_emb32, MobileNetV1, MobileNetV2, LeeNet11, LeeNet24, DaiNet19, 
     Res1dNet31, Res1dNet51, Wavegram_Cnn14, Wavegram_Logmel_Cnn14, 
     Wavegram_Logmel128_Cnn14, Cnn14_16k, Cnn14_8k, Cnn14_mel32, Cnn14_mel128, 
     Cnn14_mixup_time_domain, Cnn14_DecisionLevelMax, Cnn14_DecisionLevelAtt)
-from pytorch_utils import (move_data_to_device, count_parameters, count_flops, 
+from .pytorch_utils import (move_data_to_device, count_parameters, count_flops,
     do_mixup)
-from data_generator import (AudioSetDataset, TrainSampler, BalancedTrainSampler, 
+from utils.data_generator import (AudioSetDataset, TrainSampler, BalancedTrainSampler,
     AlternateTrainSampler, EvaluateSampler, collate_fn)
-from evaluate import Evaluator
-import config
-from losses import get_loss_func
+from .evaluate import Evaluator
+from utils import config
+from pytorch.losses import get_loss_func
 
 
 def train(args):
