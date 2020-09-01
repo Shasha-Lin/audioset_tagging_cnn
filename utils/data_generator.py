@@ -4,7 +4,7 @@ import csv
 import time
 import logging
 
-from utilities import int16_to_float32
+from utils.utilities import int16_to_float32
 
 
 def read_black_list(black_list_csv):

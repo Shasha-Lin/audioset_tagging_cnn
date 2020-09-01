@@ -22,17 +22,23 @@ from pytorch.models import *
 from utils import config
 import librosa
 import soundfile
-
+from birds import config
+from .models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout,
+    Cnn6, Cnn10, ResNet22, ResNet38, ResNet54, Cnn14_emb512, Cnn14_emb128,
+    Cnn14_emb32, MobileNetV1, MobileNetV2, LeeNet11, LeeNet24, DaiNet19,
+    Res1dNet31, Res1dNet51, Wavegram_Cnn14, Wavegram_Logmel_Cnn14,
+    Wavegram_Logmel128_Cnn14, Cnn14_16k, Cnn14_8k, Cnn14_mel32, Cnn14_mel128,
+    Cnn14_mixup_time_domain, Cnn14_DecisionLevelMax, Cnn14_DecisionLevelAtt)
 
 class Transfer_Cnn14(nn.Module):
     def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin, 
-        fmax, classes_num, freeze_base):
+        fmax, classes_num, freeze_base=True, model_type='Wavegram_Logmel_Cnn14'):
         """Classifier for a new task using pretrained Cnn14 as a sub module.
         """
         super(Transfer_Cnn14, self).__init__()
-        audioset_classes_num = 527
-        
-        self.base = Cnn14(sample_rate, window_size, hop_size, mel_bins, fmin, 
+        audioset_classes_num = config.classes_num
+        base = eval(model_type)
+        self.base = base(sample_rate, window_size, hop_size, mel_bins, fmin,
             fmax, audioset_classes_num)
 
         # Transfer to another task layer
@@ -58,7 +64,7 @@ class Transfer_Cnn14(nn.Module):
         output_dict = self.base(input, mixup_lambda)
         embedding = output_dict['embedding']
 
-        clipwise_output = torch.log_softmax(self.fc_transfer(embedding), dim=-1)
+        clipwise_output = torch.nn.functional.log_softmax(self.fc_transfer(embedding), dim=-1)
         output_dict['clipwise_output'] = clipwise_output
  
         return output_dict

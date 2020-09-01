@@ -40,7 +40,7 @@ def audio_tagging(args):
     
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
-
+    print(model)
     # Parallel
     print('GPU number: {}'.format(torch.cuda.device_count()))
     model = torch.nn.DataParallel(model)
@@ -109,7 +109,6 @@ def sound_event_detection(args):
     
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
-
     # Parallel
     print('GPU number: {}'.format(torch.cuda.device_count()))
     model = torch.nn.DataParallel(model)

@@ -27,6 +27,7 @@ from utils.data_generator import (AudioSetDataset, TrainSampler, BalancedTrainSa
 from .evaluate import Evaluator
 from utils import config
 from pytorch.losses import get_loss_func
+from pytorch.finetune_template import Transfer_Cnn14
 
 
 def train(args):
@@ -69,6 +70,7 @@ def train(args):
     early_stop = args.early_stop
     device = torch.device('cuda') if args.cuda and torch.cuda.is_available() else torch.device('cpu')
     filename = args.filename
+    load_pretrained = args.load_pretrained
 
     num_workers = 8
     sample_rate = config.sample_rate
@@ -82,11 +84,11 @@ def train(args):
     train_indexes_hdf5_path = os.path.join(workspace, 'hdf5s', 'indexes', 
         '{}.h5'.format(data_type))
 
-    eval_bal_indexes_hdf5_path = os.path.join(workspace, 
-        'hdf5s', 'indexes', 'balanced_train.h5')
+    train_indexes_hdf5_path = os.path.join(workspace, 'train_indices')
 
-    eval_test_indexes_hdf5_path = os.path.join(workspace, 'hdf5s', 'indexes', 
-        'eval.h5')
+    eval_bal_indexes_hdf5_path = os.path.join(workspace, 'val_indices')
+
+    eval_test_indexes_hdf5_path = os.path.join(workspace, 'val_long_indices')
 
     checkpoints_dir = os.path.join(workspace, 'checkpoints', filename, 
         'sample_rate={},window_size={},hop_size={},mel_bins={},fmin={},fmax={}'.format(
@@ -127,7 +129,17 @@ def train(args):
     model = Model(sample_rate=sample_rate, window_size=window_size, 
         hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
         classes_num=classes_num)
-     
+
+    if load_pretrained:
+        model = Transfer_Cnn14(sample_rate=sample_rate, window_size=window_size,
+                      hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
+                      classes_num=classes_num, model_type=model_type)
+        checkpoint = torch.load(load_pretrained, map_location=device)
+        model.load_state_dict(checkpoint['model'])
+        logging.info(f'loaded pretrained model from {checkpoint}')
+        if 'cuda' in str(device):
+            model.to(device)
+
     params_num = count_parameters(model)
     # flops_num = count_flops(model, clip_samples)
     logging.info('Parameters num: {}'.format(params_num))
@@ -166,8 +178,8 @@ def train(args):
         batch_sampler=eval_bal_sampler, collate_fn=collate_fn, 
         num_workers=num_workers, pin_memory=True)
 
-    eval_test_loader = torch.utils.data.DataLoader(dataset=dataset, 
-        batch_sampler=eval_test_sampler, collate_fn=collate_fn, 
+    eval_test_loader = torch.utils.data.DataLoader(dataset=dataset,
+        batch_sampler=eval_test_sampler, collate_fn=collate_fn,
         num_workers=num_workers, pin_memory=True)
 
     if 'mixup' in augmentation:
@@ -229,11 +241,11 @@ def train(args):
             bal_statistics = evaluator.evaluate(eval_bal_loader)
             test_statistics = evaluator.evaluate(eval_test_loader)
                             
-            logging.info('Validate bal mAP: {:.3f}'.format(
-                np.mean(bal_statistics['average_precision'])))
+            logging.info('Validate bal micro_f1: {:.3f}'.format(
+                np.mean(bal_statistics['micro_f1'])))
 
-            logging.info('Validate test mAP: {:.3f}'.format(
-                np.mean(test_statistics['average_precision'])))
+            logging.info('Validate test micro_f1: {:.3f}'.format(
+                np.mean(test_statistics['micro_f1'])))
 
             statistics_container.append(iteration, bal_statistics, data_type='bal')
             statistics_container.append(iteration, test_statistics, data_type='test')
@@ -301,8 +313,7 @@ def train(args):
         optimizer.zero_grad()
         
         if iteration % 10 == 0:
-            print('--- Iteration: {}, train time: {:.3f} s / 10 iterations ---'\
-                .format(iteration, time.time() - time1))
+            print('--- Iteration: {}, train time: {:.3f} s / 10 iterations ---'.format(iteration, time.time() - time1))
             time1 = time.time()
         
         iteration += 1
@@ -318,28 +329,26 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest='mode')
 
     parser_train = subparsers.add_parser('train') 
-    parser_train.add_argument('--workspace', type=str, required=True)
-    parser_train.add_argument('--data_type', type=str, default='full_train', choices=['balanced_train', 'full_train'])
+    parser_train.add_argument('--workspace', type=str, default='/Users/shasha.lin/audio_tagging_cnn/mini/')
+    # parser_train.add_argument('--data_type', type=str, default='full_train', choices=['balanced_train', 'full_train'])
     parser_train.add_argument('--window_size', type=int, default=1024)
+    parser_train.add_argument('--data_type', type=str, default='mini', choices=['mini', 'full'])
     parser_train.add_argument('--hop_size', type=int, default=320)
     parser_train.add_argument('--mel_bins', type=int, default=64)
     parser_train.add_argument('--fmin', type=int, default=50)
     parser_train.add_argument('--fmax', type=int, default=14000) 
-    parser_train.add_argument('--model_type', type=str, required=True)
+    parser_train.add_argument('--model_type', type=str, default='Wavegram_Logmel_Cnn14')
+    parser_train.add_argument('--load_pretrained', type=str)
     parser_train.add_argument('--loss_type', type=str, default='clip_bce', choices=['clip_bce'])
     parser_train.add_argument('--balanced', type=str, default='balanced', choices=['none', 'balanced', 'alternate'])
     parser_train.add_argument('--augmentation', type=str, default='mixup', choices=['none', 'mixup'])
     parser_train.add_argument('--batch_size', type=int, default=32)
     parser_train.add_argument('--learning_rate', type=float, default=1e-3)
     parser_train.add_argument('--resume_iteration', type=int, default=0)
-    parser_train.add_argument('--early_stop', type=int, default=1000000)
+    parser_train.add_argument('--early_stop', type=int, default=600000)
     parser_train.add_argument('--cuda', action='store_true', default=False)
     
     args = parser.parse_args()
     args.filename = get_filename(__file__)
 
-    if args.mode == 'train':
-        train(args)
-
-    else:
-        raise Exception('Error argument!')
+    train(args)

@@ -9,8 +9,8 @@ import logging
 import h5py
 import librosa
 
-from utilities import create_folder, get_sub_filepaths
-import config
+from utils.utilities import create_folder, get_sub_filepaths
+from birds import config
 
 
 def create_indexes(args):
@@ -24,7 +24,7 @@ def create_indexes(args):
     indexes_hdf5_path = args.indexes_hdf5_path
 
     # Paths
-    create_folder(os.path.dirname(indexes_hdf5_path))
+    # create_folder(os.path.dirname(indexes_hdf5_path))
 
     with h5py.File(waveforms_hdf5_path, 'r') as hr:
         with h5py.File(indexes_hdf5_path, 'w') as hw:

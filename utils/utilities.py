@@ -42,14 +42,14 @@ def create_logging(log_dir, filemode):
     logging.basicConfig(
         level=logging.DEBUG,
         format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
-        datefmt='%a, %d %b %Y %H:%M:%S',
+        datefmt='%a, %d %b %Y %H:%M',
         filename=log_path,
         filemode=filemode)
 
     # Print to console
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s', datefmt='%a, %d %b %Y %H:%M')
     console.setFormatter(formatter)
     logging.getLogger('').addHandler(console)
     
