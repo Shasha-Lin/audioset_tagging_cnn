@@ -4,7 +4,7 @@ import csv
 import time
 import logging
 
-from utils.utilities import int16_to_float32
+from .utilities import int16_to_float32
 
 
 def read_black_list(black_list_csv):
@@ -24,7 +24,7 @@ class AudioSetDataset(object):
         the waveform and target of the audio clip. This class is used by DataLoader. 
         """
         pass
-    
+
     def __getitem__(self, meta):
         """Load waveform and target of an audio clip.
         
@@ -82,7 +82,7 @@ class Base(object):
             self.hdf5_paths = [hdf5_path.decode() for hdf5_path in hf['hdf5_path'][:]]
             self.indexes_in_hdf5 = hf['index_in_hdf5'][:]
             self.targets = hf['target'][:].astype(np.float32)
-        
+
         (self.audios_num, self.classes_num) = self.targets.shape
         logging.info('Training number: {}'.format(self.audios_num))
         logging.info('Load target time: {:.3f} s'.format(time.time() - load_time))

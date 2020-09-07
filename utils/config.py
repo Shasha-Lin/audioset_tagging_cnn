@@ -5,19 +5,19 @@ sample_rate = 32000
 clip_samples = sample_rate * 10     # Audio clips are 10-second
 
 # Load label
-with open('metadata/class_labels_indices.csv', 'r') as f:
-    reader = csv.reader(f, delimiter=',')
-    lines = list(reader)
-
-labels = []
-ids = []    # Each label has a unique id such as "/m/068hy"
-for i1 in range(1, len(lines)):
-    id = lines[i1][1]
-    label = lines[i1][2]
-    ids.append(id)
-    labels.append(label)
-
-classes_num = len(labels)
+# with open('metadata/class_labels_indices.csv', 'r') as f:
+#     reader = csv.reader(f, delimiter=',')
+#     lines = list(reader)
+#
+# labels = []
+# ids = []    # Each label has a unique id such as "/m/068hy"
+# for i1 in range(1, len(lines)):
+#     id = lines[i1][1]
+#     label = lines[i1][2]
+#     ids.append(id)
+#     labels.append(label)
+#
+# classes_num = len(labels)
 
 lb_to_ix = {label : i for i, label in enumerate(labels)}
 ix_to_lb = {i : label for i, label in enumerate(labels)}

@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
  
-from utils.utilities import (create_folder, get_filename, create_logging, Mixup,
+from ..utils.utilities import (create_folder, get_filename, create_logging, Mixup,
     StatisticsContainer)
 from .models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout,
     Cnn6, Cnn10, ResNet22, ResNet38, ResNet54, Cnn14_emb512, Cnn14_emb128, 
@@ -22,12 +22,12 @@ from .models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout,
     Cnn14_mixup_time_domain, Cnn14_DecisionLevelMax, Cnn14_DecisionLevelAtt)
 from .pytorch_utils import (move_data_to_device, count_parameters, count_flops,
     do_mixup)
-from utils.data_generator import (AudioSetDataset, TrainSampler, BalancedTrainSampler,
+from ..utils.data_generator import (AudioSetDataset, TrainSampler, BalancedTrainSampler,
     AlternateTrainSampler, EvaluateSampler, collate_fn)
 from .evaluate import Evaluator
-from utils import config
-from pytorch.losses import get_loss_func
-from pytorch.finetune_template import Transfer_Cnn14
+from ..birds import config
+from .losses import get_loss_func
+from .finetune_template import Transfer_Cnn14
 
 
 def train(args):
@@ -88,7 +88,7 @@ def train(args):
 
     eval_bal_indexes_hdf5_path = os.path.join(workspace, 'val_indices')
 
-    eval_test_indexes_hdf5_path = os.path.join(workspace, 'val_long_indices')
+    # eval_test_indexes_hdf5_path = os.path.join(workspace, 'val_indices')
 
     checkpoints_dir = os.path.join(workspace, 'checkpoints', filename, 
         'sample_rate={},window_size={},hop_size={},mel_bins={},fmin={},fmax={}'.format(
@@ -123,22 +123,23 @@ def train(args):
     else:
         logging.info('Using CPU. Set --cuda flag to use GPU.')
         device = 'cpu'
-    
-    # Model
-    Model = eval(model_type)
-    model = Model(sample_rate=sample_rate, window_size=window_size, 
-        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
-        classes_num=classes_num)
 
     if load_pretrained:
         model = Transfer_Cnn14(sample_rate=sample_rate, window_size=window_size,
                       hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
-                      classes_num=classes_num, model_type=model_type)
+                      fine_tune_classes_num=classes_num, model_type=model_type)
         checkpoint = torch.load(load_pretrained, map_location=device)
-        model.load_state_dict(checkpoint['model'])
+        model.load_from_pretrain(checkpoint['model'])
         logging.info(f'loaded pretrained model from {checkpoint}')
         if 'cuda' in str(device):
             model.to(device)
+
+    else:
+        # Model
+        Model = eval(model_type)
+        model = Model(sample_rate=sample_rate, window_size=window_size,
+                      hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
+                      classes_num=classes_num)
 
     params_num = count_parameters(model)
     # flops_num = count_flops(model, clip_samples)
@@ -166,8 +167,8 @@ def train(args):
     eval_bal_sampler = EvaluateSampler(
         indexes_hdf5_path=eval_bal_indexes_hdf5_path, batch_size=batch_size)
 
-    eval_test_sampler = EvaluateSampler(
-        indexes_hdf5_path=eval_test_indexes_hdf5_path, batch_size=batch_size)
+    # eval_test_sampler = EvaluateSampler(
+    #     indexes_hdf5_path=eval_test_indexes_hdf5_path, batch_size=batch_size)
 
     # Data loader
     train_loader = torch.utils.data.DataLoader(dataset=dataset, 
@@ -178,9 +179,9 @@ def train(args):
         batch_sampler=eval_bal_sampler, collate_fn=collate_fn, 
         num_workers=num_workers, pin_memory=True)
 
-    eval_test_loader = torch.utils.data.DataLoader(dataset=dataset,
-        batch_sampler=eval_test_sampler, collate_fn=collate_fn,
-        num_workers=num_workers, pin_memory=True)
+    # eval_test_loader = torch.utils.data.DataLoader(dataset=dataset,
+    #     batch_sampler=eval_test_sampler, collate_fn=collate_fn,
+    #     num_workers=num_workers, pin_memory=True)
 
     if 'mixup' in augmentation:
         mixup_augmenter = Mixup(mixup_alpha=1.)
@@ -235,20 +236,30 @@ def train(args):
         """
         
         # Evaluate
-        if (iteration % 2000 == 0 and iteration > resume_iteration) or (iteration == 0):
+        if iteration % 100 == 0 and iteration > resume_iteration:
             train_fin_time = time.time()
 
             bal_statistics = evaluator.evaluate(eval_bal_loader)
-            test_statistics = evaluator.evaluate(eval_test_loader)
-                            
-            logging.info('Validate bal micro_f1: {:.3f}'.format(
-                np.mean(bal_statistics['micro_f1'])))
+            # test_statistics = evaluator.evaluate(eval_test_loader)
 
-            logging.info('Validate test micro_f1: {:.3f}'.format(
-                np.mean(test_statistics['micro_f1'])))
+            logging.info('Validate bal average_precision: {:.3f}'.format(
+                np.mean(bal_statistics['average_precision'])))
+            logging.info('Validate bal auc: {:.3f}'.format(
+                np.mean(bal_statistics['auc'])))
+            try:
+                logging.info('Validate bal micro_f1: {:.3f}'.format(
+                    np.mean(bal_statistics['micro_f1'])))
+            except KeyError:
+                pass
+
+            logger = logging.getLogger()
+            logger.handlers[0].flush()
+
+            # logging.info('Validate test micro_f1: {:.3f}'.format(
+            #     np.mean(test_statistics['micro_f1'])))
 
             statistics_container.append(iteration, bal_statistics, data_type='bal')
-            statistics_container.append(iteration, test_statistics, data_type='test')
+            # statistics_container.append(iteration, test_statistics, data_type='test')
             statistics_container.dump()
 
             train_time = train_fin_time - train_bgn_time
@@ -263,7 +274,7 @@ def train(args):
             train_bgn_time = time.time()
         
         # Save model
-        if iteration % 20000 == 0:
+        if iteration % 1000 == 0:
             checkpoint = {
                 'iteration': iteration, 
                 'model': model.module.state_dict(), 
@@ -274,7 +285,7 @@ def train(args):
                 
             torch.save(checkpoint, checkpoint_path)
             logging.info('Model saved to {}'.format(checkpoint_path))
-        
+
         # Mixup lambda
         if 'mixup' in augmentation:
             batch_data_dict['mixup_lambda'] = mixup_augmenter.get_lambda(
@@ -299,9 +310,8 @@ def train(args):
             batch_output_dict = model(batch_data_dict['waveform'], None)
             """{'clipwise_output': (batch_size, classes_num), ...}"""
 
-            batch_target_dict = {'target': batch_data_dict['target']}
+            batch_target_dict = {'target': batch_data_dict['target'].double()}
             """{'target': (batch_size, classes_num)}"""
-
         # Loss
         loss = loss_func(batch_output_dict, batch_target_dict)
 
@@ -329,7 +339,7 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest='mode')
 
     parser_train = subparsers.add_parser('train') 
-    parser_train.add_argument('--workspace', type=str, default='/Users/shasha.lin/audio_tagging_cnn/mini/')
+    parser_train.add_argument('--workspace', type=str, default='/Users/shasha.lin/audioset_tagging_cnn/birds/mini/short/')
     # parser_train.add_argument('--data_type', type=str, default='full_train', choices=['balanced_train', 'full_train'])
     parser_train.add_argument('--window_size', type=int, default=1024)
     parser_train.add_argument('--data_type', type=str, default='mini', choices=['mini', 'full'])
@@ -341,11 +351,11 @@ if __name__ == '__main__':
     parser_train.add_argument('--load_pretrained', type=str)
     parser_train.add_argument('--loss_type', type=str, default='clip_bce', choices=['clip_bce'])
     parser_train.add_argument('--balanced', type=str, default='balanced', choices=['none', 'balanced', 'alternate'])
-    parser_train.add_argument('--augmentation', type=str, default='mixup', choices=['none', 'mixup'])
+    parser_train.add_argument('--augmentation', type=str, default='none', choices=['none', 'mixup'])
     parser_train.add_argument('--batch_size', type=int, default=32)
-    parser_train.add_argument('--learning_rate', type=float, default=1e-3)
+    parser_train.add_argument('--learning_rate', type=float, default=1e-2)
     parser_train.add_argument('--resume_iteration', type=int, default=0)
-    parser_train.add_argument('--early_stop', type=int, default=600000)
+    parser_train.add_argument('--early_stop', type=int, default=6000)
     parser_train.add_argument('--cuda', action='store_true', default=False)
     
     args = parser.parse_args()

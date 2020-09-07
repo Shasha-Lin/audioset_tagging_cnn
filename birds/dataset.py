@@ -40,25 +40,26 @@ def output_hdf5(json_data_path, hdf5_path=hdf5_path, audio_size_file=None,
         with open(audio_size_file, 'rb') as f:
             audio_size_dict = pickle.load(f)
         for name, size in audio_size_dict.items():
-            class_size = mini_data if (size > mini_data and mini_data) else size
+            class_size = mini_data if mini_data else size
             audio_samples_num += class_size
     else:
         class_size_file = os.sep.join((os.path.dirname(hdf5_path), 'class_size_train' if train else 'class_size_val'))
         logging.info(f'will write class audio number to {class_size_file}')
         audio_size_dict = dict()
-        for name, file_list in file_dict.items():
-            for file in file_list:
-                try:
-                    class_size = int(librosa.core.get_duration(filename=file) / clip_length)
-                    audio_size_dict[name] = class_size
-                    if mini_data:
-                        class_size = mini_data
-                    audio_samples_num += class_size
-                except KeyboardInterrupt:
-                    exit(1)
-                except:
-                    logging.warning(f'Could not read {file}')
-            logging.info(f'Total audio samples number after processing {name}: {audio_samples_num}')
+        if mini_data:
+            audio_samples_num = mini_data * config.classes_num
+        else:
+            for name, file_list in file_dict.items():
+                for file in file_list:
+                    try:
+                        class_size = int(librosa.core.get_duration(filename=file) / clip_length)
+                        audio_size_dict[name] = class_size
+                        audio_samples_num += class_size
+                    except KeyboardInterrupt:
+                        exit(1)
+                    except:
+                        logging.warning(f'Could not read {file}')
+                logging.info(f'Total audio samples number after processing {name}: {audio_samples_num}')
         with open(class_size_file, 'wb') as f:
             pickle.dump(audio_size_dict, f)
     start_time = time.time()
@@ -74,7 +75,7 @@ def output_hdf5(json_data_path, hdf5_path=hdf5_path, audio_size_file=None,
             class_counter = defaultdict(int)
         for file in tqdm(files):
             if mini_data:
-                if class_counter.keys() == audio_size_dict.keys() and sum(class_counter.values()) == config.classes_num * mini_data:
+                if class_counter.keys() == audio_size_dict.keys() and sum(class_counter.values()) == audio_samples_num:
                     break
             try:
                 audio, _ = librosa.core.load(file, sr=config.sample_rate, mono=True)

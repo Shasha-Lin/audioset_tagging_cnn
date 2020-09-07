@@ -10,39 +10,39 @@ import logging
 import matplotlib.pyplot as plt
 
 import torch
-torch.backends.cudnn.benchmark=True
+# torch.backends.cudnn.benchmark=True
 torch.manual_seed(0)
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
- 
-from utils.utilities import get_filename
-from pytorch.models import *
-from utils import config
+from .models import *
+from ..utils.utilities import get_filename
 import librosa
 import soundfile
-from birds import config
-from .models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout,
-    Cnn6, Cnn10, ResNet22, ResNet38, ResNet54, Cnn14_emb512, Cnn14_emb128,
-    Cnn14_emb32, MobileNetV1, MobileNetV2, LeeNet11, LeeNet24, DaiNet19,
-    Res1dNet31, Res1dNet51, Wavegram_Cnn14, Wavegram_Logmel_Cnn14,
-    Wavegram_Logmel128_Cnn14, Cnn14_16k, Cnn14_8k, Cnn14_mel32, Cnn14_mel128,
-    Cnn14_mixup_time_domain, Cnn14_DecisionLevelMax, Cnn14_DecisionLevelAtt)
+from ..birds import config
+# from .models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout,
+#     Cnn6, Cnn10, ResNet22, ResNet38, ResNet54, Cnn14_emb512, Cnn14_emb128,
+#     Cnn14_emb32, MobileNetV1, MobileNetV2, LeeNet11, LeeNet24, DaiNet19,
+#     Res1dNet31, Res1dNet51, Wavegram_Cnn14, Wavegram_Logmel_Cnn14,
+#     Wavegram_Logmel128_Cnn14, Cnn14_16k, Cnn14_8k, Cnn14_mel32, Cnn14_mel128,
+#     Cnn14_mixup_time_domain, Cnn14_DecisionLevelMax, Cnn14_DecisionLevelAtt)
+
+pretrained_class_num = 527
+
 
 class Transfer_Cnn14(nn.Module):
     def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin, 
-        fmax, classes_num, freeze_base=True, model_type='Wavegram_Logmel_Cnn14'):
+        fmax, fine_tune_classes_num, freeze_base=True, model_type='Wavegram_Logmel_Cnn14'):
         """Classifier for a new task using pretrained Cnn14 as a sub module.
         """
         super(Transfer_Cnn14, self).__init__()
-        audioset_classes_num = config.classes_num
         base = eval(model_type)
         self.base = base(sample_rate, window_size, hop_size, mel_bins, fmin,
-            fmax, audioset_classes_num)
+            fmax, pretrained_class_num)
 
         # Transfer to another task layer
-        self.fc_transfer = nn.Linear(2048, classes_num, bias=True)
+        self.fc_transfer = nn.Linear(2048, fine_tune_classes_num, bias=True)
 
         if freeze_base:
             # Freeze AudioSet pretrained layers
@@ -54,9 +54,8 @@ class Transfer_Cnn14(nn.Module):
     def init_weights(self):
         init_layer(self.fc_transfer)
 
-    def load_from_pretrain(self, pretrained_checkpoint_path):
-        checkpoint = torch.load(pretrained_checkpoint_path)
-        self.base.load_state_dict(checkpoint['model'])
+    def load_from_pretrain(self, check_point_model):
+        self.base.load_state_dict(check_point_model)
 
     def forward(self, input, mixup_lambda=None):
         """Input: (batch_size, data_length)
@@ -66,7 +65,11 @@ class Transfer_Cnn14(nn.Module):
 
         clipwise_output = torch.nn.functional.log_softmax(self.fc_transfer(embedding), dim=-1)
         output_dict['clipwise_output'] = clipwise_output
- 
+
+        labels = torch.zeros(clipwise_output.shape).double()
+        labels[torch.arange(clipwise_output.shape[0]), clipwise_output.argmax(axis=1)] = 1
+
+        output_dict['labels'] = labels
         return output_dict
 
 

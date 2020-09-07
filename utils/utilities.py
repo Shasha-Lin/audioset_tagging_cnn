@@ -8,6 +8,7 @@ import pandas as pd
 from scipy import stats 
 import datetime
 import pickle
+import sys
 
 
 def create_folder(fd):
@@ -47,11 +48,11 @@ def create_logging(log_dir, filemode):
         filemode=filemode)
 
     # Print to console
-    console = logging.StreamHandler()
+    console = logging.StreamHandler(sys.stdout)
     console.setLevel(logging.INFO)
     formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s', datefmt='%a, %d %b %Y %H:%M')
     console.setFormatter(formatter)
-    logging.getLogger('').addHandler(console)
+    logging.getLogger().addHandler(console)
     
     return logging
 

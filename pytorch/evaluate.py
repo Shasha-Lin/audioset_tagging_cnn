@@ -1,6 +1,6 @@
 from sklearn import metrics
-
-from pytorch.pytorch_utils import forward
+import numpy as np
+from .pytorch_utils import forward
 
 
 class Evaluator(object):
@@ -25,20 +25,26 @@ class Evaluator(object):
 
         # Forward
         output_dict = forward(
-            model=self.model, 
+            model=self.model,
             generator=data_loader, 
             return_target=True)
 
         clipwise_output = output_dict['clipwise_output']    # (audios_num, classes_num)
         target = output_dict['target']    # (audios_num, classes_num)
 
-        # average_precision = metrics.average_precision_score(
-        #     target, clipwise_output, average=None)
-        #
-        # auc = metrics.roc_auc_score(target, clipwise_output, average=None)
+        average_precision = metrics.average_precision_score(
+            target, clipwise_output, average=None)
 
-        micro_f1 = metrics.f1_score(target, clipwise_output, average='micro')
-        
-        statistics = {'micro_f1': micro_f1}
+        auc = metrics.roc_auc_score(target, clipwise_output, average=None)
+
+        labels = output_dict['labels']
+        statistics = {'average_precision': average_precision,
+                      'auc': auc}
+
+        try:
+            micro_f1 = metrics.f1_score(target, labels, average='micro')
+            statistics['micro_f1'] = micro_f1
+        except:
+            pass
 
         return statistics
