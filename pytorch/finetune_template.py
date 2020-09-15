@@ -48,6 +48,8 @@ class Transfer_Cnn14(nn.Module):
             # Freeze AudioSet pretrained layers
             for param in self.base.parameters():
                 param.requires_grad = False
+        for param in self.fc_transfer.parameters():
+            param.requires_grad = True
 
         self.init_weights()
 

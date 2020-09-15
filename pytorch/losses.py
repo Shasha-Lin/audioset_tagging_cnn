@@ -1,6 +1,10 @@
 import torch.nn.functional as F
 import torch
 
+CE = torch.nn.CrossEntropyLoss()
+BCE = torch.nn.BCELoss()
+
+
 def binary_cross_entropy(output_dict, target_dict):
     """Binary crossentropy loss.
     """
@@ -9,7 +13,7 @@ def binary_cross_entropy(output_dict, target_dict):
 
 def cross_entropy(output_dict, target_dict):
     targets = torch.argmax(target_dict['target'], dim=-1)
-    return F.cross_entropy(output_dict['clipwise_output'], targets)
+    return CE(output_dict['clipwise_output'], targets)
 
 
 def get_loss_func(loss_type):

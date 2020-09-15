@@ -13,7 +13,7 @@ class Evaluator(object):
         """
         self.model = model
         
-    def evaluate(self, data_loader, max=50):
+    def evaluate(self, data_loader, max=20):
         """Forward evaluation data and calculate statistics.
 
         Args:
