@@ -16,11 +16,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
-from .models import *
-from ..utils.utilities import get_filename
+from pytorch.models import *
+from utils.utilities import get_filename
 import librosa
 import soundfile
-from ..birds import config
+from birds import config
 # from .models import (Cnn14, Cnn14_no_specaug, Cnn14_no_dropout,
 #     Cnn6, Cnn10, ResNet22, ResNet38, ResNet54, Cnn14_emb512, Cnn14_emb128,
 #     Cnn14_emb32, MobileNetV1, MobileNetV2, LeeNet11, LeeNet24, DaiNet19,
@@ -63,13 +63,14 @@ class Transfer_Cnn14(nn.Module):
         output_dict = self.base(input, mixup_lambda)
         embedding = output_dict['embedding']
 
-        clipwise_output = torch.nn.functional.log_softmax(self.fc_transfer(embedding), dim=-1)
+        clipwise_output = self.fc_transfer(embedding)
+        clipwise_output = torch.sigmoid(clipwise_output)
         output_dict['clipwise_output'] = clipwise_output
 
-        labels = torch.zeros(clipwise_output.shape).double()
-        labels[torch.arange(clipwise_output.shape[0]), clipwise_output.argmax(axis=1)] = 1
-
-        output_dict['labels'] = labels
+        # labels = torch.zeros(clipwise_output.shape).cpu()
+        # labels[torch.arange(clipwise_output.shape[0]), clipwise_output.argmax(dim=1)] = 1
+        # labels = torch.argmax(clipwise_output, dim=1)
+        # output_dict['labels'] = labels
         return output_dict
 
 

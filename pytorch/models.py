@@ -221,9 +221,14 @@ class Cnn14(nn.Module):
         x = F.relu_(self.fc1(x))
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
-        
-        output_dict = {'clipwise_output': clipwise_output, 'embedding': embedding}
 
+
+        output_dict = {'clipwise_output': clipwise_output, 'embedding': embedding}
+        # clipwise_output = clipwise_output.cpu()
+        # labels = torch.zeros(clipwise_output.shape).cpu()
+        # labels[torch.arange(clipwise_output.shape[0]), clipwise_output.argmax(dim=1)] = 1
+        # labels = torch.argmax(clipwise_output, dim=1)
+        # output_dict['labels'] = labels
         return output_dict
 
 
@@ -2312,8 +2317,8 @@ class Wavegram_Cnn14(nn.Module):
 
 
 class Wavegram_Logmel_Cnn14(nn.Module):
-    def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin, 
-        fmax, classes_num):
+    def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin,
+                 fmax, classes_num):
         
         super(Wavegram_Logmel_Cnn14, self).__init__()
 

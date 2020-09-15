@@ -21,7 +21,7 @@ seed = 2020
 
 np.random.seed(seed)
 
-hdf5_path = os.path.expanduser('~/audioset_tagging_cnn/birds/full')
+hdf5_path = os.path.expanduser('~/audioset_tagging_cnn/birds/mini_1')
 
 
 def output_hdf5(json_data_path, hdf5_path=hdf5_path, audio_size_file=None,

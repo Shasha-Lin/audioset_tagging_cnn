@@ -2,7 +2,7 @@ import numpy as np
 import time
 import torch
 import torch.nn as nn
-from ..birds.config import classes_num
+from birds.config import classes_num
 import tqdm
 
 def move_data_to_device(x, device):
@@ -40,7 +40,7 @@ def append_to_dict(dict, key, value):
 
 
 def forward(model, generator, return_input=False,
-    return_target=False):
+    return_target=False, max=50):
     """Forward data to a model.
     
     Args: 
@@ -60,9 +60,10 @@ def forward(model, generator, return_input=False,
     output_dict = {}
     device = next(model.parameters()).device
     time1 = time.time()
-
     # Forward data to a model in mini-batches
-    for n, batch_data_dict in enumerate(tqdm.tqdm(generator, total=41)):
+    for n, batch_data_dict in enumerate(tqdm.tqdm(generator, total=max)):
+        if n > max:
+            break
         batch_waveform = move_data_to_device(batch_data_dict['waveform'], device)
         
         with torch.no_grad():
@@ -73,9 +74,6 @@ def forward(model, generator, return_input=False,
 
         append_to_dict(output_dict, 'clipwise_output', 
             batch_output['clipwise_output'].data.cpu().numpy())
-
-        append_to_dict(output_dict, 'labels',
-                       batch_output['labels'].data.cpu().numpy())
 
         if 'segmentwise_output' in batch_output.keys():
             append_to_dict(output_dict, 'segmentwise_output', 
